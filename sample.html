@@ -258,9 +258,21 @@
       localStorage.setItem('gh-mp3-favorites', JSON.stringify(favorites));
     }
 
-    function saveRepoUrl() {
-      localStorage.setItem('repo-url', JSON.stringify(repourl));
+    function saveRepoUrl(url) {
+      // let storedData =[];
+      if (!Array.isArray(repourl)) {
+            repourl = [];
 
+        } 
+      let jud = repourl.some(item => item === url)
+      console.log(jud);
+      if (!jud) {
+      //   repourl = repourl.filter(item => item !== url)
+        
+      // }else{
+        repourl = [...repourl,url]
+      }
+      localStorage.setItem('repo-url', JSON.stringify(repourl));
     }
 
     async function fetchMp3List(item) {
@@ -285,14 +297,16 @@
       if (!resp.ok) {
         throw new Error(`GitHub 请求失败：${resp.status} ${resp.statusText}`);
       }
-      // saveRepoUrl(api);
+
+  
+      saveRepoUrl(api);
+
       return resp.json();
     }
 
     function renderAll() {
       renderTracks();
       renderFavorites();
-      renderRepoList();
     }
 
     function renderTracks() {
@@ -347,18 +361,45 @@
         repo.innerHTML = '<p>暂无收藏。</p>';
         return;
       }
+      console.log("list");
+      
       repourl.forEach((item,index) => {
         console.log(item);
-        // const div = document.createElement('div');
-        // div.classList = 'repo-url'
-        // div.innerHTML = `
-        //     <span class="track-info" >${item} <button data-action="fav">移除</button></span>
-        // `
-        // rpo.appendChild(div);
+        const div = document.createElement('div');
+        div.classList = 'repo-url'
+        div.innerHTML = `
+            <span class="repourl" >${item} 
+              <button class="del-url">移除</button>
+              <button class="get-url">获取</button>
+              </span>
+        `;
+        div.querySelector(".del-url").addEventListener('click',()=> delUrl(index))
+        rpo.appendChild(div);
       })
 
     }
 
+
+
+    function delUrl(index){
+      console.log(index);
+      let tmp = document.querySelectorAll(".repourl");
+      let url = tmp[index].textContent;
+      console.log(url);
+      // repourl.forEach(item=>{
+        repourl = repourl.filter(item => item !== url)
+      // })
+      // let jud = repourl.some(item => item === url)
+      // console.log(jud);
+      // if (jud) {
+        // repourl = repourl.filter(item => item !== url)
+      // }
+    
+      repourl = repourl.splice(index,1)
+      localStorage.setItem('repo-url', JSON.stringify(repourl));
+      
+      
+    }
 
     function isFavorite(url) {
       return favorites.some(item => item.url === url);
@@ -430,6 +471,7 @@
 
     // 初始化收藏显示
     renderFavorites();
+    renderRepoList();
   </script>
 </body>
 
