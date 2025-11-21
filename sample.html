@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>GitHub MP3 播放器（纯前端）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: #f4f6fb;
+      color: #222;
+    }
+
+    header {
+      padding: 1.5rem 2rem;
+      background: #111827;
+      color: white;
+    }
+
+    main {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .config,
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    input {
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid #CBD5F5;
+      font-size: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #ef4444;
+    }
+
+    .lists {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      gap: 0.5rem;
+    }
+
+    .track:last-child {
+      border-bottom: none;
+    }
+
+    .track-info {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    @media (max-width:640px) {
+
+      header,
+      main {
+        padding: 1rem;
+      }
+
+      .track {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .track-actions {
+        display: flex;
+        gap: 0.5rem;
+        width: 100%;
+      }
+    }
+
+    .music-player {
+      height: 120px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+      /* background-color: antiquewhite; */
+
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>GitHub MP3 播放器 · 纯前端版</h1>
+    <p>填写 GitHub 仓库信息，在线播放并收藏 MP3（收藏保存在浏览器 localStorage）。</p>
+  </header>
+
+  <main>
+    <section class="config">
+      <div class="lists">
+        <div class="card" style="">
+          <h2>配置 GitHub 仓库</h2>
+          <form id="configForm">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem;">
+              <label>
+                仓库链接
+                <textarea required name="owner" placeholder="" rows="5"></textarea>
+              </label>
+            </div>
+            <div style="margin-top:1rem;">
+              <button type="submit">获取列表</button>
+            </div>
+          </form>
+          <p id="status" style="margin-top:0.6rem;color:#6b7280;"></p>
+        </div>
+        <div class="card" id="repo-list" style="">
+          <h3>仓库链接</h3>
+        </div>
+    </section>
+
+
+
+    <section class="lists">
+      <div class="card">
+        <h3>音乐列表</h3>
+        <div id="tracks"></div>
+      </div>
+      <div class="card">
+        <h3>收藏</h3>
+        <div id="favorites"></div>
+      </div>
+
+      </div>
+    </section>
+
+
+
+    <div class="music-player">
+      <!-- <section class=""> -->
+      <audio id="player" controls></audio>
+      <div class="controls">
+        <button onclick="prevTrack()">上一首</button>
+        <!-- <button onclick="togglePlayPause()">播放 / 暂停</button> -->
+        <button onclick="nextTrack()">下一首</button>
+      </div>
+      <!-- </section> -->
+
+    </div>
+  </main>
+
+  <script>
+    const configForm = document.getElementById('configForm');
+    const tracksEl = document.getElementById('tracks');
+    const favoritesEl = document.getElementById('favorites');
+    const player = document.getElementById('player');
+    const statusEl = document.getElementById('status');
+
+    let tracks = [];
+    let favorites = loadFavorites();
+    let repourl = loadRepoUrl()
+    // let repoList = renderRepoList();
+
+    // 新增：记录当前播放的列表和索引
+    let currentList = 'tracks';  // 可选：'tracks' 或 'favorites'
+    let currentIndex = -1;
+
+
+    function prevTrack() {
+      let lis = [];
+      currentIndex = currentIndex - 1;
+      if (currentList == 'tracks') {
+        lis = document.querySelectorAll("#tracks > .track")
+      } else {
+        lis = document.querySelectorAll("#favorites > .track")
+      }
+      lis[currentIndex].querySelector('[data-action="play"]').click()
+    }
+
+    function nextTrack() {
+      let lis = [];
+      currentIndex = currentIndex + 1;
+      if (currentList == 'tracks') {
+        lis = document.querySelectorAll("#tracks > .track")
+      } else {
+        lis = document.querySelectorAll("#favorites > .track")
+      }
+      lis[currentIndex].querySelector('[data-action="play"]').click()
+    }
+
+
+
+
+
+
+    function loadFavorites() {
+      try {
+        return JSON.parse(localStorage.getItem('gh-mp3-favorites')) || [];
+      } catch {
+        return [];
+      }
+    }
+
+
+    
+
+    function loadRepoUrl() {
+      try {
+        return JSON.parse(localStorage.getItem('repo-url')) || [];
+      } catch {
+        return [];
+      }
+    }
+
+
+    function saveFavorites() {
+      localStorage.setItem('gh-mp3-favorites', JSON.stringify(favorites));
+    }
+
+    function saveRepoUrl() {
+      localStorage.setItem('repo-url', JSON.stringify(repourl));
+
+    }
+
+    async function fetchMp3List(item) {
+      const regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree\/[^\/]+\/)?(.+)/;
+      const match = item.match(regex);
+      if (!match) {
+        statusEl.textContent = 'url错误';
+      }
+
+      const config = {
+        username: match[1],
+        repoName: match[2],
+        folderPath: match[3]
+      };
+      console.log(config);
+
+      statusEl.textContent = '获取中...';
+      const api = `https://api.github.com/repos/${config.username}/${config.repoName}/contents/${config.folderPath}`;
+      const resp = await fetch(api, {
+        headers: { 'Accept': 'application/vnd.github+json' }
+      });
+      if (!resp.ok) {
+        throw new Error(`GitHub 请求失败：${resp.status} ${resp.statusText}`);
+      }
+      // saveRepoUrl(api);
+      return resp.json();
+    }
+
+    function renderAll() {
+      renderTracks();
+      renderFavorites();
+      renderRepoList();
+    }
+
+    function renderTracks() {
+      tracksEl.innerHTML = '';
+      if (!tracks.length) {
+        tracksEl.innerHTML = '<p>暂无数据，先填写配置并获取列表。</p>';
+        return;
+      }
+      tracks.forEach((track, index) => {
+        const div = document.createElement('div');
+        div.className = 'track';
+        div.innerHTML = `
+          <div class="track-info" title="${track.name}">${track.name}</div>
+          <div class="track-actions">
+            <button data-action="play">播放</button>
+            <button data-action="fav">${isFavorite(track.url) ? '取消收藏' : '收藏'}</button>
+          </div>
+        `;
+        div.querySelector('[data-action="play"]').addEventListener('click', () => playTrack(track.url, 'tracks', index));
+        div.querySelector('[data-action="fav"]').addEventListener('click', () => toggleFavorite(track));
+        tracksEl.appendChild(div);
+      });
+    }
+
+    function renderFavorites() {
+      favoritesEl.innerHTML = '';
+      if (!favorites.length) {
+        favoritesEl.innerHTML = '<p>暂无收藏。</p>';
+        return;
+      }
+      favorites.forEach((track, index) => {
+        const div = document.createElement('div');
+        div.className = 'track';
+        div.innerHTML = `
+          <div class="track-info" title="${track.name}">${track.name}</div>
+          <div class="track-actions">
+            <button data-action="play" class="secondary">播放</button>
+            <button data-action="fav">移除</button>
+          </div>
+        `;
+        div.querySelector('[data-action="play"]').addEventListener('click', () => playTrack(track.url, 'favorites', index));
+        div.querySelector('[data-action="fav"]').addEventListener('click', () => toggleFavorite(track));
+        favoritesEl.appendChild(div);
+      });
+    }
+
+
+    function renderRepoList() {
+     let rpo =  document.getElementById('repo-list');
+      // let repoList = [];
+      if (!repourl.length) {
+        repo.innerHTML = '<p>暂无收藏。</p>';
+        return;
+      }
+      repourl.forEach((item,index) => {
+        console.log(item);
+        // const div = document.createElement('div');
+        // div.classList = 'repo-url'
+        // div.innerHTML = `
+        //     <span class="track-info" >${item} <button data-action="fav">移除</button></span>
+        // `
+        // rpo.appendChild(div);
+      })
+
+    }
+
+
+    function isFavorite(url) {
+      return favorites.some(item => item.url === url);
+    }
+
+    function toggleFavorite(track) {
+      if (isFavorite(track.url)) {
+        favorites = favorites.filter(item => item.url !== track.url);
+      } else {
+        favorites = [...favorites, track];
+      }
+      saveFavorites();
+      renderAll();
+    }
+
+
+    function playTrack(url, listName = 'tracks', index = -1) {
+      currentList = listName;
+      currentIndex = index;
+      player.src = url;
+      player.play();
+      console.log(url, listName, index);
+
+    }
+
+    // 新增：自动向下播放
+    player.addEventListener('ended', () => {
+      const list = currentList === 'favorites' ? favorites : tracks;
+      if (!list.length) return;
+      let nextIndex = currentIndex + 1;
+      if (nextIndex >= list.length) return; // 播放到末尾就停止，可按需改成循环
+      const nextTrack = list[nextIndex];
+      playTrack(nextTrack.url, currentList, nextIndex);
+    });
+
+    configForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      let a = configForm.querySelector('[name="owner"]').value;
+      const itemsArray = a.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+
+      statusEl.textContent = '正在并行获取所有仓库列表...';
+
+      try {
+        // 使用 map 将每个 URL 转换为一个 Promise，然后使用 Promise.all 等待所有 Promise 完成
+        const promises = itemsArray.map(item => fetchMp3List(item));
+
+        // results 将是一个数组，包含了所有 fetchMp3List 调用返回的数据
+        const allResults = await Promise.all(promises);
+
+        // 合并所有结果到一个 tracks 列表中
+        tracks = [];
+        allResults.forEach(data => {
+          const newTracks = data
+            .filter(entry => entry.type === 'file' && entry.download_url?.endsWith('.mp3'))
+            .map(entry => ({ name: entry.name, url: entry.download_url }));
+          tracks.push(...newTracks); // 将新轨道合并到主列表中
+        });
+
+        statusEl.textContent = `所有列表获取成功：共 ${tracks.length} 首 MP3`;
+
+      } catch (err) {
+        console.error(err);
+        tracks = [];
+        statusEl.textContent = `获取失败：${err.message}`;
+      }
+
+      renderAll();
+    });
+
+    // 初始化收藏显示
+    renderFavorites();
+  </script>
+</body>
+
+</html>
