@@ -197,6 +197,8 @@
     const player = document.getElementById('player');
     const statusEl = document.getElementById('status');
 
+    let gl_api = "";
+    let gl_res = "";
     let tracks = [];
     let favorites = loadFavorites();
     let repourl = loadRepoUrl()
@@ -243,7 +245,7 @@
     }
 
 
-    
+
 
     function loadRepoUrl() {
       try {
@@ -261,16 +263,16 @@
     function saveRepoUrl(url) {
       // let storedData =[];
       if (!Array.isArray(repourl)) {
-            repourl = [];
+        repourl = [];
 
-        } 
-      let jud = repourl.some(item => item === url)
+      }
+      let jud = repourl.some(item => item == url)
       console.log(jud);
       if (!jud) {
-      //   repourl = repourl.filter(item => item !== url)
-        
-      // }else{
-        repourl = [...repourl,url]
+        //   repourl = repourl.filter(item => item !== url)
+
+        // }else{
+        repourl = [...repourl, url]
       }
       localStorage.setItem('repo-url', JSON.stringify(repourl));
     }
@@ -291,6 +293,7 @@
 
       statusEl.textContent = '获取中...';
       const api = `https://api.github.com/repos/${config.username}/${config.repoName}/contents/${config.folderPath}`;
+      if (gl_api == api) return gl_res;
       const resp = await fetch(api, {
         headers: { 'Accept': 'application/vnd.github+json' }
       });
@@ -298,10 +301,12 @@
         throw new Error(`GitHub 请求失败：${resp.status} ${resp.statusText}`);
       }
 
-  
-      saveRepoUrl(api);
 
-      return resp.json();
+      await saveRepoUrl(item);
+      
+      gl_api = api;
+      gl_res = resp.json();
+      return gl_res;
     }
 
     function renderAll() {
@@ -355,50 +360,78 @@
 
 
     function renderRepoList() {
-     let rpo =  document.getElementById('repo-list');
+      let rpo = document.getElementById('repo-list');
       // let repoList = [];
       if (!repourl.length) {
         repo.innerHTML = '<p>暂无收藏。</p>';
         return;
       }
       console.log("list");
-      
-      repourl.forEach((item,index) => {
-        console.log(item);
+
+      repourl.forEach((item, index) => {
+        // console.log(item);
         const div = document.createElement('div');
         div.classList = 'repo-url'
         div.innerHTML = `
-            <span class="repourl" >${item} 
+            <span class="repourl" data-url=${item}>${item.split("/").pop()} 
               <button class="del-url">移除</button>
               <button class="get-url">获取</button>
               </span>
         `;
-        div.querySelector(".del-url").addEventListener('click',()=> delUrl(index))
+        div.querySelector(".del-url").addEventListener('click', () => delUrl(index));
+        div.querySelector(".get-url").addEventListener('click', () => getUrl(index))
         rpo.appendChild(div);
       })
 
     }
 
 
+    async function getUrl(index) {
+      let tmp = document.querySelectorAll(".repourl");
+      let url = tmp[index].getAttribute("data-url").trim();
+      console.log(url);
 
-    function delUrl(index){
+      let promises = await fetchMp3List(url);
+
+      console.log(promises);
+
+      // // 合并所有结果到一个 tracks 列表中
+      tracks = [];
+      // allResults.forEach(data => {
+      const newTracks = promises
+        .filter(entry => entry.type === 'file' && entry.download_url?.endsWith('.mp3'))
+        .map(entry => ({ name: entry.name, url: entry.download_url }));
+      tracks.push(...newTracks); // 将新轨道合并到主列表中
+      // });
+      // console.log(tracks)
+
+      statusEl.textContent = `所有列表获取成功：共 ${tracks.length} 首 MP3`;
+      renderTracks();
+
+    }
+
+    function delUrl(index) {
       console.log(index);
       let tmp = document.querySelectorAll(".repourl");
-      let url = tmp[index].textContent;
+      let url = tmp[index].getAttribute("data-url").trim();
+      tmp[index].parentNode.remove();
       console.log(url);
       // repourl.forEach(item=>{
-        repourl = repourl.filter(item => item !== url)
+      // repourl = repourl.filter(item => item !== url)
       // })
       // let jud = repourl.some(item => item === url)
       // console.log(jud);
       // if (jud) {
-        // repourl = repourl.filter(item => item !== url)
-      // }
-    
-      repourl = repourl.splice(index,1)
+      repourl = repourl.filter(item => {
+        return item.trim() != url;
+      })
+
+
+
+
+      console.log(repourl)
       localStorage.setItem('repo-url', JSON.stringify(repourl));
-      
-      
+
     }
 
     function isFavorite(url) {
@@ -459,6 +492,7 @@
         });
 
         statusEl.textContent = `所有列表获取成功：共 ${tracks.length} 首 MP3`;
+        renderRepoList();
 
       } catch (err) {
         console.error(err);
