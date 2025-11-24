@@ -361,6 +361,8 @@
 
     function renderRepoList() {
       let rpo = document.getElementById('repo-list');
+            // 删除收藏块内容
+       document.querySelectorAll(".repo-url").forEach(item=>{item.remove();})
       // let repoList = [];
       if (!repourl.length) {
         repo.innerHTML = '<p>暂无收藏。</p>';
@@ -373,7 +375,7 @@
         const div = document.createElement('div');
         div.classList = 'repo-url'
         div.innerHTML = `
-            <span class="repourl" data-url=${item}>${item.split("/").pop()} 
+            <span class="repourl" data-url=${item}>${decodeURIComponent(item.split("/").pop())} 
               <button class="del-url">移除</button>
               <button class="get-url">获取</button>
               </span>
@@ -492,6 +494,7 @@
         });
 
         statusEl.textContent = `所有列表获取成功：共 ${tracks.length} 首 MP3`;
+        
         renderRepoList();
 
       } catch (err) {
