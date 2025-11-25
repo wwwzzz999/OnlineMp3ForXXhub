@@ -278,21 +278,23 @@
     }
 
     async function fetchMp3List(item) {
-      const regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree\/[^\/]+\/)?(.+)/;
-      const match = item.match(regex);
-      if (!match) {
+      // let regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree\/[^\/]+\/)?(.+)/;
+      const regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\/(?:.*?\/)??(?:tree\/main\/)?(.+))?$/;
+      let match = item.match(regex);
+      let config = {};
+      let api;
+      if (match) {
+         config = {
+          username: match[1],
+          repoName: match[2],
+          folderPath: match[3] || " "
+        };
+         api = `https://api.github.com/repos/${config.username}/${config.repoName}/contents/${config.folderPath}`;
+      }
+      else {
         statusEl.textContent = 'url错误';
       }
-
-      const config = {
-        username: match[1],
-        repoName: match[2],
-        folderPath: match[3]
-      };
-      console.log(config);
-
       statusEl.textContent = '获取中...';
-      const api = `https://api.github.com/repos/${config.username}/${config.repoName}/contents/${config.folderPath}`;
       if (gl_api == api) return gl_res;
       const resp = await fetch(api, {
         headers: { 'Accept': 'application/vnd.github+json' }
@@ -303,7 +305,7 @@
 
 
       await saveRepoUrl(item);
-      
+
       gl_api = api;
       gl_res = resp.json();
       return gl_res;
@@ -361,8 +363,8 @@
 
     function renderRepoList() {
       let rpo = document.getElementById('repo-list');
-            // 删除收藏块内容
-       document.querySelectorAll(".repo-url").forEach(item=>{item.remove();})
+      // 删除收藏块内容
+      document.querySelectorAll(".repo-url").forEach(item => { item.remove(); })
       // let repoList = [];
       if (!repourl.length) {
         repo.innerHTML = '<p>暂无收藏。</p>';
@@ -494,7 +496,7 @@
         });
 
         statusEl.textContent = `所有列表获取成功：共 ${tracks.length} 首 MP3`;
-        
+
         renderRepoList();
 
       } catch (err) {
