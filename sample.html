@@ -37,7 +37,7 @@
       padding: 1.5rem;
       box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
     }
-
+   
     label {
       display: flex;
       flex-direction: column;
@@ -128,6 +128,17 @@
       /* background-color: antiquewhite; */
 
     }
+
+    .card_{
+      max-height: 300px; 
+    
+    /* 文本默认自动换行 (word-wrap: break-word; 或 overflow-wrap: break-word;) */
+    word-wrap: break-word; 
+
+    /* 当内容超出 max-height 时，自动显示滚动条 */
+    overflow-y: auto; 
+    }
+    
   </style>
 </head>
 
@@ -140,7 +151,7 @@
   <main>
     <section class="config">
       <div class="lists">
-        <div class="card" style="">
+        <div class="card card_" style="">
           <h2>配置 GitHub 仓库</h2>
           <form id="configForm">
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem;">
@@ -153,9 +164,24 @@
               <button type="submit">获取列表</button>
             </div>
           </form>
+
+          <h2>github 单曲链接</h2>
+          <form id="configForm2">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem;">
+              <label>
+                仓库链接
+                <input required name="sing-song" placeholder="" ></input>
+              </label>
+            </div>
+            <div style="margin-top:1rem;">
+              <button type="submit">获取</button>
+            </div>
+          </form>
+
+
           <p id="status" style="margin-top:0.6rem;color:#6b7280;"></p>
         </div>
-        <div class="card" id="repo-list" style="">
+        <div class="card card_" id="repo-list">
           <h3>仓库链接</h3>
         </div>
     </section>
@@ -177,9 +203,9 @@
 
 
 
-    <div class="music-player">
+    <div class="music-player"style="width: 500px;">
       <!-- <section class=""> -->
-      <audio id="player" controls></audio>
+      <audio id="player" controls ></audio>
       <div class="controls">
         <button onclick="prevTrack()">上一首</button>
         <!-- <button onclick="togglePlayPause()">播放 / 暂停</button> -->
@@ -192,6 +218,8 @@
 
   <script>
     const configForm = document.getElementById('configForm');
+    const configForm2 = document.getElementById('configForm2');
+
     const tracksEl = document.getElementById('tracks');
     const favoritesEl = document.getElementById('favorites');
     const player = document.getElementById('player');
@@ -279,7 +307,7 @@
 
     async function fetchMp3List(item) {
       // let regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree\/[^\/]+\/)?(.+)/;
-      const regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\/(?:.*?\/)??(?:tree\/main\/)?(.+))?$/;
+      const regex = /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\/(?:.*?\/)??(?:tree\/(?:main|master)\/)?(.+))?$/;
       let match = item.match(regex);
       let config = {};
       let api;
@@ -471,6 +499,22 @@
       const nextTrack = list[nextIndex];
       playTrack(nextTrack.url, currentList, nextIndex);
     });
+
+
+    configForm2.addEventListener('submit',e =>{
+      e.preventDefault();
+      let a = configForm2.querySelector('[name="sing-song"]').value;
+      let song_name = decodeURIComponent(a.split("/").at(-1));
+      a = a.replace("/blob","");
+      a = a.replace("//github.com","//raw.githubusercontent.com");
+      
+      let tmp = {
+        name : song_name,
+        url : a
+      }
+      toggleFavorite(tmp);
+      
+    })
 
     configForm.addEventListener('submit', async e => {
       e.preventDefault();
